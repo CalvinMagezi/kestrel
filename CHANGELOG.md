@@ -2,6 +2,12 @@
 
 Each release has a section here. The release pipeline publishes the section for the tag as the release notes, and the app shows it under "What's new" when an update is offered.
 
+## 0.1.1
+
+- Website with screenshots, scroll animation and a live download link.
+- Calculator and Share rows now fit narrow phones.
+- Update checks are tested end to end through the app.
+
 ## 0.1.0
 
 First public release.
