@@ -40,11 +40,19 @@ async function connect() {
 const ws = new WebSocket(await connect());
 await new Promise((r) => ws.addEventListener("open", r, { once: true }));
 let id = 0;
+let mockUpdate = null;
 const pending = new Map();
 const problems = [];
 ws.addEventListener("message", (m) => {
   const msg = JSON.parse(m.data);
   if (msg.id && pending.has(msg.id)) { pending.get(msg.id)(msg); pending.delete(msg.id); return; }
+  if (msg.method === "Fetch.requestPaused") {
+    const { requestId, request } = msg.params;
+    if (mockUpdate && request.url.includes("/api/update") && request.method === "GET") {
+      send("Fetch.fulfillRequest", { requestId, responseCode: 200, responseHeaders: [{ name: "content-type", value: "application/json" }], body: Buffer.from(JSON.stringify(mockUpdate)).toString("base64") });
+    } else send("Fetch.continueRequest", { requestId });
+    return;
+  }
   if (msg.method === "Runtime.exceptionThrown") problems.push(msg.params.exceptionDetails.exception?.description || msg.params.exceptionDetails.text);
   if (msg.method === "Runtime.consoleAPICalled" && msg.params.type === "error") problems.push(msg.params.args.map((a) => a.value ?? a.description).join(" "));
 });
@@ -63,6 +71,7 @@ const count = (sel) => evalJs(`document.querySelectorAll(${JSON.stringify(sel)})
 const text = (sel) => evalJs(`(document.querySelector(${JSON.stringify(sel)})||{}).textContent||""`);
 
 await send("Page.enable");
+await send("Fetch.enable", { patterns: [{ urlPattern: "*api/update*" }] });
 await send("Runtime.enable");
 
 for (const theme of ["dark", "light"]) {
@@ -129,6 +138,7 @@ for (const theme of ["dark", "light"]) {
   check(`${theme}: calculator says a tiny account cannot size this trade`, (await text("#learn .out")).includes("Too small") && (await text("#learn .out")).includes("2.0%"), (await text("#learn .out")).slice(0, 90));
   await evalJs("(() => { const i = document.querySelector('#learn .calc input[aria-label=\"Balance (USD)\"]'); i.value = '1000'; i.dispatchEvent(new Event('input')); })()");
   await sleep(300);
+  check(`${theme}: calculator boxes stay inside the screen`, await evalJs("[...document.querySelectorAll('#learn .calc input, #learn .calc select')].every(e => e.getBoundingClientRect().right <= window.innerWidth && e.getBoundingClientRect().left >= 0)"));
   check(`${theme}: calculator sizes a larger account`, (await text("#learn .out")).includes("5,000 units (0.05 lot)"), (await text("#learn .out")).slice(0, 90));
   await shot(`${theme}-6b-learn`);
 
@@ -150,6 +160,29 @@ for (const theme of ["dark", "light"]) {
   await evalJs("document.querySelector('#control .form .k-btn--primary').click()");
   await sleep(1500);
 
+  if (theme === "dark") {
+    const rel = { version: "0.2.0", notes: "Faster first start.", apk_url: "https://github.com/x", sums_url: "https://github.com/x", size: 12582912, page_url: "https://github.com/CalvinMagezi/kestrel/releases/latest" };
+    const base = { current: "0.1.0", progress: 0, error: null, checked_at: Math.floor(Date.now() / 1000), enabled: true, wifi_only: true, dismissed: false, release: rel };
+    const state = async (patch) => { mockUpdate = { ...base, ...patch }; await evalJs("location.hash = '#/chat'; location.reload()"); await sleep(1500); };
+    await state({ phase: "available" });
+    const bar = () => text("#updatebar");
+    check("update bar: offers the new version with its size", (await bar()).includes("Kestrel 0.2.0 is available (12 MB)") && (await bar()).includes("Update") && (await bar()).includes("Later"), await bar());
+    await evalJs("[...document.querySelectorAll('#updatebar button')].find(b => b.textContent.includes('new')).click()"); await sleep(200);
+    check("update bar: what's new shows the release notes", (await bar()).includes("Faster first start."));
+    await state({ phase: "downloading", progress: 42 });
+    check("update bar: shows download progress", (await bar()).includes("42%") && (await evalJs("document.querySelector('#updatebar .meter i').style.width")) === "42%");
+    await state({ phase: "ready", progress: 100 });
+    check("update bar: ready offers the release link without the Android app", (await bar()).includes("ready to install") && (await count("#updatebar a")) === 1);
+    await state({ phase: "error", error: "the download did not match its checksum, so it was discarded" });
+    check("update bar: an error says Problem and offers Try again", (await bar()).includes("Problem") && (await bar()).includes("Try again") && (await bar()).includes("checksum"));
+    await state({ phase: "available", dismissed: true });
+    check("update bar: stays hidden once dismissed", await evalJs("document.getElementById('updatebar').hidden"));
+    await state({ phase: "available" });
+    await go("#/control", 1500);
+    check("control: the updates section shows version and the switches", (await text("#control")).includes("Version 0.1.0") && (await text("#control")).includes("Check for updates") && (await text("#control")).includes("Update available"));
+    mockUpdate = null;
+    await evalJs("location.hash = '#/chat'; location.reload()"); await sleep(1200);
+  }
   await go("#/keep-running", 800);
   check(`${theme}: keep-running screen renders three steps`, (await count("#keep .step")) === 3);
   check(`${theme}: keep-running hides the app bar and tabs`, await evalJs("document.getElementById('bar').offsetParent === null && document.getElementById('tabs').offsetParent === null"));
