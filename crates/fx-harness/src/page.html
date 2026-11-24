@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark light">
+<title>Kestrel</title>
+<style>
+/*TOKENS_CSS*/
+/*COMPONENTS_CSS*/
+html,body{margin:0;height:100%}
+body{background:var(--surface);color:var(--ink);font:400 15px/22px var(--font-sans);-webkit-text-size-adjust:100%}
+#app{height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.view{flex:1;min-height:0;display:flex;flex-direction:column}
+.view[hidden],[hidden]{display:none!important}
+.scroll>*{flex:none}
+.k-badge{white-space:nowrap;flex:none}
+.k-tile__value{font-size:clamp(20px,6.2vw,28px);white-space:nowrap}
+.scroll{flex:1;min-height:0;overflow-y:auto;padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-6)}
+.mark{width:32px;height:32px;flex:none}
+.mark .wing{fill:none;stroke:var(--ink);stroke-width:6;stroke-linecap:round;stroke-linejoin:round}
+.mark .dot{fill:var(--mark-dot)}
+:root,[data-theme="dark"]{--mark-dot:#f5a524}
+[data-theme="light"]{--mark-dot:#b86e00}
+.k-appbar__end[hidden]{display:none}
+.tabs{display:flex;border-top:1px solid var(--border);background:var(--surface-raised);padding-bottom:env(safe-area-inset-bottom)}
+.tabs a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:56px;border-top:2px solid transparent;margin-top:-1px;color:var(--ink-muted);font:600 11px/14px var(--font-sans);text-decoration:none}
+.tabs a:focus-visible{outline:2px solid var(--focus-ring);outline-offset:-4px}
+.tabs a[aria-current="page"]{color:var(--ink);border-top-color:var(--accent)}
+.log{flex:1;min-height:0;overflow-y:auto;padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)}
+.chips{display:flex;gap:var(--space-2);padding:var(--space-2) var(--space-4);overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.k-bubble--wide{align-self:stretch}
+.res{display:grid;grid-template-columns:1fr auto;gap:4px 16px;margin:8px 0;padding:8px 0;border-block:1px solid var(--border);font:500 13px/20px var(--font-mono);font-variant-numeric:tabular-nums}
+.res .l{color:var(--ink-muted);font-family:var(--font-sans);font-weight:400}
+.res .v{display:inline-flex;align-items:center;gap:4px;justify-content:flex-end;text-align:right}
+.res .k-icon{width:14px;height:14px}
+.li{padding-left:1em;text-indent:-1em}
+.note{font:400 12px/16px var(--font-sans);color:var(--ink-muted)}
+.sec{margin:0 0 8px;font:600 11px/14px var(--font-sans);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-muted)}
+.card{border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;background:var(--surface-raised)}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--space-3)}
+.muted{margin:0;color:var(--ink-muted)}
+.step{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;box-sizing:border-box;min-height:56px;padding:8px 16px;border:0;border-bottom:1px solid var(--border);background:transparent;color:var(--ink);font:inherit;text-align:left;text-decoration:none}
+.step:last-child{border-bottom:0}
+.step b{display:block;font:600 15px/22px var(--font-sans)}
+.step small{display:block;font:400 12px/16px var(--font-sans);color:var(--ink-muted)}
+.stepper{display:inline-flex;align-items:center;border:1px solid var(--border-strong);border-radius:var(--radius-md);overflow:hidden}
+.stepper button{width:48px;height:48px;border:0;background:transparent;color:var(--ink);font:600 20px/24px var(--font-sans);cursor:pointer}
+.stepper button:focus-visible{outline:2px solid var(--focus-ring);outline-offset:-4px}
+.stepper output{min-width:64px;text-align:center;font:600 15px/22px var(--font-mono);font-variant-numeric:tabular-nums}
+.n{flex:none;width:28px;height:28px;border-radius:var(--radius-full);border:1px solid var(--border-strong);display:grid;place-items:center;font:600 13px/16px var(--font-mono)}
+.run .step{align-items:flex-start}
+.run .step .k-badge{margin-left:auto;flex:none}
+.run .step small{margin-top:2px;font-size:13px;line-height:18px}
+.hero{display:flex;flex-direction:column;gap:var(--space-2)}
+.hero h1{margin:0;font:600 32px/36px var(--font-sans);letter-spacing:-.02em}
+.stack{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-4) var(--space-4) var(--space-6)}
+.btnrow{display:flex;flex-direction:column;gap:var(--space-2)}
+.k-btn{cursor:pointer}
+.err{padding:var(--space-4)}
+.upd{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;padding:12px 16px;background:var(--surface-raised);border-bottom:1px solid var(--border)}
+.upd .txt{flex:1 1 200px;font:500 14px/20px var(--font-sans)}
+.upd .txt small{display:block;font:400 12px/16px var(--font-sans);color:var(--ink-muted)}
+.upd .acts{display:flex;gap:8px;flex-wrap:wrap}
+.upd .k-btn{min-height:40px;padding:0 14px;font-size:14px}
+.upd .meter{flex-basis:100%;height:4px;background:var(--border);border-radius:var(--radius-full);overflow:hidden}
+.upd .meter i{display:block;height:100%;background:var(--accent)}
+.upd .notes{flex-basis:100%;font:400 13px/18px var(--font-sans);color:var(--ink-muted);white-space:pre-wrap}
+.def{padding:12px 16px;border-bottom:1px solid var(--border)}
+.def:last-child{border-bottom:0}
+.def b{display:block;font:600 15px/22px var(--font-sans)}
+.def span{display:block;font:400 14px/20px var(--font-sans);color:var(--ink-muted)}
+.calc{padding:16px;display:grid;gap:12px}
+.calc label{display:grid;gap:4px;font:600 12px/16px var(--font-sans);color:var(--ink-muted)}
+.calc input,.calc select{min-height:48px;padding:0 12px;border-radius:var(--radius-md);border:1px solid var(--border-strong);background:var(--surface-sunken);color:var(--ink);font:500 15px/22px var(--font-mono)}
+.calc input:focus-visible,.calc select:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+.calc .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.out{border-top:1px solid var(--border);padding-top:12px;display:grid;gap:4px;font:500 14px/20px var(--font-mono)}
+.out .l{color:var(--ink-muted);font-family:var(--font-sans);font-weight:400}
+.ugx{margin-top:2px;font:500 12px/16px var(--font-mono);color:var(--ink-muted)}
+.form{padding:16px;display:grid;gap:12px;border-top:1px solid var(--border)}
+.form input{min-height:48px;padding:0 12px;border-radius:var(--radius-md);border:1px solid var(--border-strong);background:var(--surface-sunken);color:var(--ink);font:500 15px/22px var(--font-mono)}
+.form input:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+.seal{font:500 13px/18px var(--font-mono);color:var(--ink-muted);word-break:break-all}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="k-appbar" id="bar">
+    <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><path class="wing" d="M5 28 L21 15 L32 27 L43 15 L59 28"/><circle class="dot" cx="32" cy="44" r="6"/></svg>
+    <div>
+      <div class="k-appbar__name" id="title">Kestrel</div>
+      <div class="k-appbar__sub">Paper account · research only</div>
+    </div>
+    <span class="k-badge k-appbar__end" id="state" hidden></span>
+  </header>
+
+  <div class="upd" id="updatebar" hidden role="status"></div>
+
+  <section class="view" id="v-chat" hidden>
+    <div class="log" id="log" role="log" aria-live="polite" aria-label="Conversation"></div>
+    <div class="chips" id="chips"></div>
+    <form class="k-composer" id="form">
+      <input class="k-field" id="msg" autocomplete="off" enterkeyhint="send" placeholder="Type a command or help" aria-label="Message">
+      <button class="k-btn k-btn--primary" aria-label="Send" id="send"></button>
+    </form>
+  </section>
+
+  <section class="view" id="v-overview" hidden><div class="scroll" id="overview"></div></section>
+  <section class="view" id="v-learn" hidden><div class="scroll" id="learn"></div></section>
+  <section class="view" id="v-control" hidden><div class="scroll" id="control"></div></section>
+  <section class="view" id="v-keep" hidden>
+    <div class="scroll" id="keep"></div>
+    <div class="stack" id="keepActions"></div>
+  </section>
+
+  <nav class="tabs" id="tabs" aria-label="Sections"></nav>
+</div>
+<script>
+(function () {
+  "use strict";
+  var TOKEN_KEY = "fx-token", HISTORY_KEY = "fx-chat", SEEN_KEY = "fx-keep-seen", STEP3_KEY = "fx-step3";
+  var MAX_HISTORY = 60, REFRESH_MS = 20000, KEEP_POLL_MS = 2000, RISK_STEP = 0.1;
+  var bridge = window.Kestrel || null;
+
+  var ICONS = {
+    up: "M12 19V5M5 12l7-7 7 7", down: "M12 5v14M19 12l-7 7-7-7", flat: "M5 12h14",
+    pause: "M8 5v14M16 5v14", alert: "M12 3l10 18H2L12 3zM12 10v5M12 18h.01",
+    refresh: "M20 11a8 8 0 1 0-2.3 5.7M20 4v7h-7", send: "M3 11l18-8-8 18-2-8-8-2z",
+    check: "M5 12l5 5 9-10", chat: "M4 5h16v11H9l-5 4V5z",
+    grid: "M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z", sliders: "M4 7h10M18 7h2M4 17h2M10 17h10M14 5v4M6 15v4",
+    book: "M4 5h6a3 3 0 0 1 3 3v12a2 2 0 0 0-2-2H4V5zM20 5h-6a3 3 0 0 0-3 3v12a2 2 0 0 1 2-2h7V5z", share: "M12 3v12M7 8l5-5 5 5M5 14v6h14v-6"
+  };
+  var NS = "http://www.w3.org/2000/svg";
+
+  function h(tag, attrs) {
+    var el = document.createElement(tag);
+    if (attrs) Object.keys(attrs).forEach(function (k) {
+      if (k === "class") el.className = attrs[k];
+      else if (k === "text") el.textContent = attrs[k];
+      else if (k.indexOf("on") === 0) el.addEventListener(k.slice(2), attrs[k]);
+      else el.setAttribute(k, attrs[k]);
+    });
+    for (var i = 2; i < arguments.length; i++) {
+      var c = arguments[i];
+      if (c == null || c === false) continue;
+      el.appendChild(typeof c === "string" ? document.createTextNode(c) : c);
+    }
+    return el;
+  }
+  function icon(name, cls) {
+    var s = document.createElementNS(NS, "svg");
+    s.setAttribute("class", "k-icon" + (cls ? " " + cls : ""));
+    s.setAttribute("viewBox", "0 0 24 24");
+    s.setAttribute("aria-hidden", "true");
+    var p = document.createElementNS(NS, "path");
+    p.setAttribute("d", ICONS[name]);
+    s.appendChild(p);
+    return s;
+  }
+  function $(id) { return document.getElementById(id); }
+  function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+
+  var q = new URLSearchParams(location.search);
+  if (q.get("t")) { localStorage.setItem(TOKEN_KEY, q.get("t")); window.history.replaceState(null, "", location.pathname + location.hash); }
+  var token = function () { return localStorage.getItem(TOKEN_KEY) || ""; };
+
+  function api(path, body) {
+    return fetch(path, {
+      method: body ? "POST" : "GET",
+      headers: { "content-type": "application/json", "x-fx-token": token() },
+      body: body ? JSON.stringify(body) : undefined
+    }).then(function (r) {
+      return r.json().then(function (j) {
+        if (!r.ok) throw new Error(j.error || j.reply || ("HTTP " + r.status));
+        return j;
+      });
+    });
+  }
+
+  function applyTheme() {
+    var light = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.setAttribute("data-theme", light ? "light" : "dark");
+  }
+  applyTheme();
+  if (window.matchMedia) window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", applyTheme);
+
+  function money(n, plus) {
+    var s = Math.abs(n).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (n < 0 ? "-" : plus && n > 0 ? "+" : "") + s;
+  }
+  function ago(min) {
+    if (min == null) return "no candle yet";
+    if (min < 1) return "just now";
+    if (min < 60) return min + " min ago";
+    if (min < 1440) return Math.floor(min / 60) + " h ago";
+    return Math.floor(min / 1440) + " d ago";
+  }
+  function dirIcon(d) { return icon(d === "bull" ? "up" : d === "bear" ? "down" : "flat"); }
+  function dirWord(d) { return d === "bull" ? "Bull" : d === "bear" ? "Bear" : "No trend"; }
+  function price(n) { return n.toFixed(n > 20 ? 3 : 5); }
+
+  function badge(kind, text, iconName) {
+    var cls = { live: "k-badge k-badge--live", paused: "k-badge k-badge--paused", problem: "k-badge k-badge--problem", neutral: "k-badge" }[kind] || "k-badge";
+    return h("span", { class: cls }, iconName ? icon(iconName) : null, text);
+  }
+  function stateBadge(s) {
+    if (s === "live") return badge("live", "Live");
+    if (s === "problem") return badge("problem", "Problem", "alert");
+    if (s === "stale") return badge("paused", "Stale", "alert");
+    if (s === "closed") return badge("neutral", "Market closed");
+    return badge("neutral", "Warming up");
+  }
+  function row(leading, title, meta, trailing) {
+    return h("div", { class: "k-row" }, leading,
+      h("div", { class: "k-row__main" }, h("div", { class: "k-row__title", text: title }), h("div", { class: "k-row__meta", text: meta })), trailing);
+  }
+
+  // ---------- header state ----------
+  function setHeader(ov) {
+    var el = $("state");
+    var kind = "live", text = "Live", ic = null;
+    if (ov.paused) { kind = "paused"; text = "Paused"; ic = "pause"; }
+    else if (ov.pairs.some(function (p) { return p.state === "problem"; })) { kind = "problem"; text = "Problem"; ic = "alert"; }
+    else if (ov.market_closed) { kind = "neutral"; text = "Market closed"; }
+    else if (ov.pairs.every(function (p) { return p.state === "warming"; })) { kind = "neutral"; text = "Warming up"; }
+    el.className = "k-appbar__end " + ({ live: "k-badge k-badge--live", paused: "k-badge k-badge--paused", problem: "k-badge k-badge--problem", neutral: "k-badge" })[kind];
+    clear(el);
+    if (ic) el.appendChild(icon(ic));
+    el.appendChild(document.createTextNode(text));
+    el.hidden = false;
+  }
+
+  // ---------- chat ----------
+  var convo = [];
+  try { convo = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); } catch (e) { convo = []; }
+  function save() { localStorage.setItem(HISTORY_KEY, JSON.stringify(convo.slice(-MAX_HISTORY))); }
+
+  // Light formatting for model replies, built with DOM nodes so reply text is never parsed as HTML.
+  function rich(text) {
+    var box = h("div", { class: "k-bubble" });
+    box.style.whiteSpace = "normal";
+    text.split("\n").forEach(function (line, i) {
+      var bullet = /^\s*[-*\u2022]\s+/.test(line);
+      var body = line.replace(/^\s*[-*\u2022]\s+/, "");
+      var p = h("div", { class: bullet ? "li" : "" });
+      if (!line.trim()) p.style.height = "8px";
+      if (bullet) p.appendChild(document.createTextNode("\u2022 "));
+      body.split(/(\*\*[^*]+\*\*)/).forEach(function (seg) {
+        if (/^\*\*[^*]+\*\*$/.test(seg)) p.appendChild(h("strong", { text: seg.slice(2, -2) }));
+        else if (seg) p.appendChild(document.createTextNode(seg));
+      });
+      box.appendChild(p);
+    });
+    return box;
+  }
+  function bubble(m) {
+    if (m.who === "me") return h("div", { class: "k-bubble k-bubble--me", text: m.text });
+    if (!m.card) return m.text.indexOf("\n") >= 0 || m.text.indexOf("**") >= 0 ? rich(m.text) : h("div", { class: "k-bubble", text: m.text });
+    var grid = h("div", { class: "res" });
+    m.card.rows.forEach(function (r) {
+      grid.appendChild(h("span", { class: "l", text: r[0] }));
+      grid.appendChild(h("span", { class: "v" }, r[2] ? icon(r[2]) : null, r[1]));
+    });
+    return h("div", { class: "k-bubble k-bubble--wide" },
+      h("div", { style: "font-weight:600", text: m.card.title }), grid, h("div", { class: "note", text: m.card.note }));
+  }
+  function renderLog() {
+    var log = $("log");
+    clear(log);
+    if (!convo.length) convo.push({ who: "bot", text: "Paper account only. No broker, no real money. Type help for commands." });
+    convo.slice(-MAX_HISTORY).forEach(function (m) { log.appendChild(bubble(m)); });
+    log.scrollTop = log.scrollHeight;
+  }
+  function push(m) { convo.push(m); save(); var log = $("log"); log.appendChild(bubble(m)); log.scrollTop = log.scrollHeight; }
+
+  var busy = false;
+  function send(text) {
+    text = (text || "").trim();
+    if (!text || busy) return;
+    busy = true;
+    push({ who: "me", text: text });
+    var wait = h("div", { class: "k-bubble", text: "Working…" });
+    $("log").appendChild(wait);
+    $("log").scrollTop = $("log").scrollHeight;
+    api("/api/chat", { message: text, history: convo.slice(-9, -1).map(function (m) { return { who: m.who, text: m.text }; }) }).then(function (j) {
+      wait.remove();
+      push({ who: "bot", text: j.reply, card: j.card || null });
+    }).catch(function (e) {
+      wait.remove();
+      push({ who: "bot", text: "Could not reach the harness: " + e.message });
+    }).then(function () { busy = false; });
+  }
+  function buildChat() {
+    $("send").appendChild(icon("send"));
+    var chips = $("chips");
+    ["status", "setups", "backtest", "journal", "refresh", "help"].forEach(function (c) {
+      chips.appendChild(h("button", { class: "k-chip", type: "button", onclick: function () { send(c); } }, c));
+    });
+    $("form").addEventListener("submit", function (e) { e.preventDefault(); var t = $("msg").value; $("msg").value = ""; send(t); });
+    renderLog();
+  }
+
+  // ---------- overview ----------
+  function renderOverview(ov) {
+    var el = $("overview");
+    clear(el);
+    var change = ov.change;
+    var delta = Math.abs(change) < 0.005
+      ? h("div", { class: "k-delta k-delta--flat", text: "USD · no change yet" })
+      : h("div", { class: "k-delta" }, icon(change > 0 ? "up" : "down"), money(change, true) + " USD");
+    var ugx = ov.ugx ? h("div", { class: "ugx", text: "\u2248 UGX " + Math.round(ov.equity * ov.ugx.rate).toLocaleString("en-US") }) : null;
+    el.appendChild(h("div", { class: "grid2" },
+      h("div", { class: "k-tile" }, h("div", { class: "k-tile__label", text: "Equity" }), h("div", { class: "k-tile__value", text: money(ov.equity) }), delta, ugx),
+      h("div", { class: "k-tile" }, h("div", { class: "k-tile__label", text: "Open trades" }), h("div", { class: "k-tile__value", text: String(ov.open) }),
+        h("div", { class: "k-delta k-delta--flat", text: "of " + ov.max_open + " allowed" }))));
+
+    var watching = h("div", { class: "card" });
+    ov.pairs.forEach(function (p) {
+      var meta = p.state === "warming" ? "waiting for the first candles" : p.zones + (p.zones === 1 ? " zone" : " zones") + " · candle " + ago(p.age_min);
+      watching.appendChild(row(dirIcon(p.trend), p.pair + " · " + dirWord(p.trend), meta, stateBadge(p.state)));
+      if (p.error) watching.appendChild(h("div", { class: "err note", text: "Feed problem: " + p.error }));
+    });
+    el.appendChild(h("section", null, h("h2", { class: "sec", text: "Watching" }), watching));
+
+    if (ov.zones.length) {
+      var zones = h("div", { class: "card" });
+      ov.zones.forEach(function (z) {
+        zones.appendChild(row(dirIcon(z.dir), z.pair + " · " + dirWord(z.dir) + " " + z.label, price(z.bottom) + " to " + price(z.top), badge("neutral", "Watching")));
+      });
+      el.appendChild(h("section", null, h("h2", { class: "sec", text: "Zones" }), zones));
+    }
+
+    var pos = h("section", null, h("h2", { class: "sec", text: "Open positions" }));
+    if (ov.positions.length) {
+      var card = h("div", { class: "card" });
+      ov.positions.forEach(function (p) {
+        card.appendChild(row(dirIcon(p.dir), (p.dir === "bull" ? "Long " : "Short ") + p.pair,
+          Math.round(p.units).toLocaleString("en-US") + " units · stop " + price(p.stop), badge("live", "Open")));
+      });
+      pos.appendChild(card);
+    } else {
+      pos.appendChild(h("p", { class: "muted", text: "No open positions. An entry waits for a retest of a zone, and the risk rules can skip it." }));
+    }
+    el.appendChild(pos);
+
+    if (ov.recent.length) {
+      var rc = h("div", { class: "card" });
+      ov.recent.forEach(function (t) {
+        var up = t.r > 0.005, down = t.r < -0.005;
+        rc.appendChild(row(icon(up ? "up" : down ? "down" : "flat"), (t.dir === "bull" ? "Long " : "Short ") + t.pair,
+          (t.r >= 0 ? "+" : "") + t.r.toFixed(2) + " R · " + money(t.pnl, true) + " USD", null));
+      });
+      el.appendChild(h("section", null, h("h2", { class: "sec", text: "Recent trades" }), rc));
+    }
+  }
+
+  // ---------- control ----------
+  var ctl = null, riskTimer = null;
+  function postControl(body) {
+    return api("/api/control", body).then(function (j) { ctl = j; renderControl(); return refreshOverview(); });
+  }
+  function renderControl() {
+    if (!ctl) return;
+    var el = $("control");
+    clear(el);
+    var toggle = ctl.paused
+      ? h("button", { class: "k-btn k-btn--primary", onclick: function () { postControl({ paused: false }); } }, icon("refresh"), "Resume entries")
+      : h("button", { class: "k-btn k-btn--secondary", onclick: function () { postControl({ paused: true }); } }, icon("pause"), "Pause entries");
+    el.appendChild(h("section", null, h("h2", { class: "sec", text: "Entries" }),
+      h("div", { class: "card", style: "padding:16px;display:flex;flex-direction:column;gap:12px" },
+        h("div", { text: ctl.paused ? "Paused. No new entries. Open trades still run to their stop or target." : "The harness opens paper trades when a zone is retested and the risk rules allow it. Pausing stops new entries. Open trades still run to their stop or target." }),
+        toggle)));
+
+    var out = h("output", { text: ctl.risk_pct.toFixed(1) + "%" });
+    function nudge(d) {
+      var v = Math.round((ctl.risk_pct + d) * 10) / 10;
+      if (v < ctl.risk_min || v > ctl.risk_max) return;
+      ctl.risk_pct = v; out.textContent = v.toFixed(1) + "%";
+      clearTimeout(riskTimer);
+      riskTimer = setTimeout(function () { postControl({ risk_pct: v }); }, 400);
+    }
+    el.appendChild(h("section", null, h("h2", { class: "sec", text: "Risk per trade" }),
+      h("div", { class: "card", style: "padding:16px;display:flex;align-items:center;justify-content:space-between;gap:12px" },
+        h("div", null, h("div", { style: "font:600 15px/22px var(--font-sans)", text: "Share of equity" }),
+          h("div", { class: "note", text: "Allowed range " + ctl.risk_min + "% to " + ctl.risk_max + "%" })),
+        h("div", { class: "stepper", role: "group", "aria-label": "Risk per trade" },
+          h("button", { "aria-label": "Decrease", onclick: function () { nudge(-RISK_STEP); } }, "-"), out,
+          h("button", { "aria-label": "Increase", onclick: function () { nudge(RISK_STEP); } }, "+")))));
+
+    var a = ctl.assistant, assistant = h("div", { class: "card" });
+    assistant.appendChild(h("div", { class: "step" }, h("div", null, h("b", { text: "Model" }),
+      h("small", { text: a.ready ? "Answers free-text questions. It cannot trade or change settings." : "No model set up. Commands still work." })),
+      a.ready ? badge("neutral", a.model) : badge("neutral", "None")));
+    if (a.kind === "claude") assistant.appendChild(h("div", { class: "step" }, h("div", null, h("b", { text: "Key" }), h("small", { text: "Stored privately on this phone" })), badge("live", "Set")));
+    el.appendChild(h("section", null, h("h2", { class: "sec", text: "Assistant" }), assistant));
+
+    el.appendChild(updatesSection());
+    el.appendChild(accountSection());
+    el.appendChild(recordSection());
+    el.appendChild(dataSection());
+    if (bridge && bridge.quietHours) {
+      var quiet = !!bridge.quietHours();
+      el.appendChild(h("section", null, h("h2", { class: "sec", text: "Alerts" }), h("div", { class: "card" },
+        h("div", { class: "step" }, h("div", null, h("b", { text: "Silent at night" }), h("small", { text: "From 22:00 to 06:00 alerts arrive without sound." })),
+          h("button", { class: "k-btn k-btn--secondary", style: "min-height:40px", "aria-pressed": String(quiet), onclick: function () { bridge.setQuietHours(!quiet); renderControl(); } }, quiet ? "On" : "Off")))));
+    }
+    if (bridge) {
+      var ok = bridgeOk();
+      el.appendChild(h("section", null, h("h2", { class: "sec", text: "Keep running" }),
+        h("div", { class: "card" }, h("a", { class: "step", href: "#/keep-running" },
+          h("div", null, h("b", { text: "Background use" }), h("small", { text: "Settings that keep Kestrel alive when the screen is off" })),
+          ok ? badge("neutral", "Ready", "check") : badge("paused", "Check", "alert")))));
+    }
+  }
+
+  // ---------- updates ----------
+  var upd = null, notesOpen = false, updMsg = "";
+  function mb(bytes) { return bytes ? Math.max(1, Math.round(bytes / 1048576)) + " MB" : ""; }
+  function updPost(body) {
+    return api("/api/update", body).then(function (j) { upd = j; renderUpdateBar(); if (current === "control") renderControl(); return j; });
+  }
+  function refreshUpdate() {
+    return api("/api/update").then(function (j) { upd = j; renderUpdateBar(); if (current === "control" && ctl) renderControl(); }).catch(function () { /* the bar simply stays hidden */ });
+  }
+  function installNow() {
+    var r = bridge && bridge.installUpdate ? bridge.installUpdate() : "no-bridge";
+    if (r === "needs-permission") { updMsg = "Allow Kestrel to install updates, then tap Install again."; bridge.openInstallSettings(); }
+    else if (r !== "started") updMsg = r.indexOf("error") === 0 ? r.slice(7) : "Could not start the install.";
+    else updMsg = "";
+    renderUpdateBar();
+  }
+  function renderUpdateBar() {
+    var el = $("updatebar"), u = upd;
+    clear(el);
+    var r = u && u.release;
+    if (!r || u.dismissed || u.phase === "idle" || u.phase === "checking" || current === "keep") { el.hidden = true; return; }
+    el.hidden = false;
+    var size = mb(r.size), name = "Kestrel " + r.version;
+    function btn(label, kind, fn) { return h("button", { class: "k-btn k-btn--" + kind, type: "button", onclick: fn }, label); }
+    var later = btn("Later", "ghost", function () { updPost({ action: "dismiss" }); });
+    var notes = btn(notesOpen ? "Hide notes" : "What\u2019s new", "ghost", function () { notesOpen = !notesOpen; renderUpdateBar(); });
+    if (u.phase === "downloading") {
+      el.appendChild(h("div", { class: "txt" }, "Downloading " + name + ", " + u.progress + "%"));
+      el.appendChild(h("div", { class: "meter", role: "progressbar", "aria-valuenow": String(u.progress), "aria-valuemin": "0", "aria-valuemax": "100" }, h("i", { style: "width:" + u.progress + "%" })));
+      return;
+    }
+    if (u.phase === "error") {
+      el.appendChild(h("div", { class: "txt" }, h("span", { class: "k-badge k-badge--problem" }, icon("alert"), "Problem"), h("small", { text: u.error || "The update did not finish." })));
+      el.appendChild(h("div", { class: "acts" }, btn("Try again", "secondary", function () { updPost({ action: "download" }); }), later));
+      return;
+    }
+    if (u.phase === "ready") {
+      el.appendChild(h("div", { class: "txt" }, name + " is ready to install", updMsg ? h("small", { text: updMsg }) : null));
+      el.appendChild(h("div", { class: "acts" }, bridge ? btn("Install", "primary", installNow) : h("a", { class: "k-btn k-btn--primary", href: r.page_url, target: "_blank", rel: "noopener" }, "Open release"), later));
+      return;
+    }
+    var metered = !!(bridge && bridge.isMetered && bridge.isMetered() && u.wifi_only);
+    var line = metered ? name + " is available (" + size + "). Waiting for Wi-Fi to save your data." : name + " is available" + (size ? " (" + size + ")" : "");
+    el.appendChild(h("div", { class: "txt" }, line));
+    el.appendChild(h("div", { class: "acts" }, btn(metered ? "Download anyway" : "Update", "primary", function () { updPost({ action: "download" }); }), r.notes ? notes : null, later));
+    if (notesOpen && r.notes) el.appendChild(h("div", { class: "notes", text: r.notes }));
+  }
+  function updatesSection() {
+    var u = upd || { phase: "idle", current: ctl.app_version || "", enabled: true, wifi_only: true, checked_at: 0 };
+    var status = u.phase === "available" || u.phase === "downloading" || u.phase === "ready" ? badge("paused", u.phase === "ready" ? "Ready" : "Update available", "alert")
+      : u.phase === "error" ? badge("problem", "Problem", "alert")
+      : u.phase === "checking" ? badge("neutral", "Checking")
+      : badge("neutral", u.checked_at ? "Up to date" : "Not checked", u.checked_at ? "check" : null);
+    var card = h("div", { class: "card" });
+    card.appendChild(h("div", { class: "step" }, h("div", null, h("b", { text: "Version " + (u.current || "") }),
+      h("small", { text: u.checked_at ? "Last checked " + ago(Math.max(0, Math.round((Date.now() / 1000 - u.checked_at) / 60))) : "Not checked yet" })), status));
+    card.appendChild(h("div", { class: "step" }, h("div", null, h("b", { text: "Check for updates" }),
+      h("small", { text: "Asks GitHub for the newest release twice a day. GitHub sees your address and version." })),
+      h("button", { class: "k-btn k-btn--secondary", style: "min-height:40px", "aria-pressed": String(!!u.enabled), onclick: function () { updPost({ action: "set", enabled: !u.enabled }); } }, u.enabled ? "On" : "Off")));
+    if (bridge) card.appendChild(h("div", { class: "step" }, h("div", null, h("b", { text: "Wi-Fi only" }),
+      h("small", { text: "Wait for Wi-Fi before downloading an update, to save mobile data." })),
+      h("button", { class: "k-btn k-btn--secondary", style: "min-height:40px", "aria-pressed": String(!!u.wifi_only), onclick: function () { updPost({ action: "set", wifi_only: !u.wifi_only }); } }, u.wifi_only ? "On" : "Off")));
+    card.appendChild(h("div", { class: "step" }, h("div", null, h("b", { text: "Look now" })),
+      h("button", { class: "k-btn k-btn--secondary", style: "min-height:40px", onclick: function () { updPost({ action: "check" }).then(function () { setTimeout(refreshUpdate, 2500); }); } }, icon("refresh"), "Check now")));
+    return h("section", null, h("h2", { class: "sec", text: "Updates" }), card);
+  }
+
+  // ---------- control sections ----------
+  var resetOpen = false;
+  function kbText(kb) { return kb >= 1024 ? (kb / 1024).toFixed(1) + " MB" : kb + " KB"; }
+  function ugxText(usd, rate) { return rate ? " (about UGX " + Math.round(usd * rate).toLocaleString("en-US") + ")" : ""; }
+  function accountSection() {
+    var a = ctl.account, rate = ctl.ugx && ctl.ugx.rate;
+    var card = h("div", { class: "card" },
+      h("div", { class: "step" }, h("div", null, h("b", { text: "Starting balance" }),
+        h("small", { text: "USD " + money(a.start_equity) + ugxText(a.start_equity, rate) })),
+        h("button", { class: "k-btn k-btn--secondary", style: "min-height:40px", onclick: function () { resetOpen = !resetOpen; renderControl(); } }, resetOpen ? "Cancel" : "Reset")));
+    if (resetOpen) {
+      var amount = h("input", { type: "number", inputmode: "decimal", value: String(a.start_equity), "aria-label": "New starting balance in USD" });
+      var word = h("input", { type: "text", autocomplete: "off", placeholder: "RESET", "aria-label": "Type RESET to confirm" });
+      var msg = h("div", { class: "note" });
+      var go = h("button", { class: "k-btn k-btn--primary", disabled: "", onclick: function () {
+        postControl({ reset: { equity: parseFloat(amount.value), confirm: word.value } }).then(function () { resetOpen = false; renderControl(); }).catch(function (e) { msg.textContent = e.message; });
+      } }, "Reset paper account");
+      word.addEventListener("input", function () { if (word.value === "RESET") go.removeAttribute("disabled"); else go.setAttribute("disabled", ""); });
+      card.appendChild(h("div", { class: "form" },
+        h("div", { class: "note", text: "This clears every paper trade and starts again from the balance below. The journal is kept. Type RESET to confirm." }),
+        h("label", { class: "note" }, "New starting balance (USD, " + a.min + " to " + a.max.toLocaleString("en-US") + ")"), amount, word, go, msg));
+    }
+    return h("section", null, h("h2", { class: "sec", text: "Paper account" }), card);
+  }
+  function shareExport(kind, name, msgEl) {
+    fetch("/api/export?kind=" + kind, { headers: { "x-fx-token": token() } }).then(function (r) {
+      if (!r.ok) throw new Error("Export failed");
+      return r.text();
+    }).then(function (text) {
+      if (bridge && bridge.shareText) bridge.shareText(name, text);
+      else {
+        var a = document.createElement("a");
+        a.href = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+        a.download = name; a.click();
+      }
+    }).catch(function (e) { msgEl.textContent = e.message; });
+  }
+  function recordSection() {
+    var j = ctl.journal, msg = h("div", { class: "note", style: "padding:0 16px 12px" });
+    var card = h("div", { class: "card" });
+    if (!j || !j.entries) {
+      card.appendChild(h("div", { class: "step" }, h("div", null, h("b", { text: "Journal" }), h("small", { text: "Nothing recorded yet." }))));
+    } else {
+      var since = j.since ? new Date(j.since * 1000).toISOString().slice(0, 10) : "";
+      card.appendChild(h("div", { class: "step" }, h("div", null, h("b", { text: "Journal" }),
+        h("small", { text: j.entries + " entries since " + since + ". Each entry is sealed to the one before it." })),
+        j.intact ? badge("neutral", "Intact", "check") : badge("problem", "Broken", "alert")));
+      card.appendChild(h("div", { class: "step" }, h("div", null, h("b", { text: "Latest seal" }), h("small", { class: "seal", text: j.head || "" }))));
+      card.appendChild(h("div", { class: "step" }, h("div", null, h("b", { text: "Share" }), h("small", { text: "Send the journal or your trades to someone, or keep a copy." })),
+        h("div", { style: "display:flex;gap:8px" },
+          h("button", { class: "k-btn k-btn--secondary", style: "min-height:40px", onclick: function () { shareExport("journal", "kestrel-journal.jsonl", msg); } }, icon("share"), "Journal"),
+          h("button", { class: "k-btn k-btn--secondary", style: "min-height:40px", onclick: function () { shareExport("trades", "kestrel-trades.csv", msg); } }, icon("share"), "Trades"))));
+      card.appendChild(msg);
+    }
+    return h("section", null, h("h2", { class: "sec", text: "Your record" }), card);
+  }
+  function dataSection() {
+    var d = ctl.data;
+    return h("section", null, h("h2", { class: "sec", text: "Data used" }), h("div", { class: "card" },
+      h("div", { class: "step" }, h("div", null, h("b", { text: "Market data" }),
+        h("small", { text: "Today " + kbText(d.today_kb) + ", this month " + kbText(d.month_kb) + ". Does not count searches or model replies." })))));
+  }
+
+  // ---------- learn ----------
+  var PAIR_INFO = { EURUSD: [0.0001, false, 1.09], GBPUSD: [0.0001, false, 1.27], AUDUSD: [0.0001, false, 0.65], NZDUSD: [0.0001, false, 0.6], USDJPY: [0.01, true, 150], USDCHF: [0.0001, true, 0.88], USDCAD: [0.0001, true, 1.37] };
+  var MICRO_LOT = 1000, LOT = 100000;
+  function sizeResult(equity, riskPct, stopPips, pair, price, rate) {
+    var info = PAIR_INFO[pair], pip = info[0], pipPerUnit = info[1] ? pip / price : pip;
+    var riskUsd = equity * riskPct / 100, raw = riskUsd / (stopPips * pipPerUnit);
+    var units = Math.floor(raw / MICRO_LOT + 1e-6) * MICRO_LOT;
+    var minRisk = MICRO_LOT * stopPips * pipPerUnit;
+    return { riskUsd: riskUsd, units: units, lots: units / LOT, minRiskUsd: minRisk, minRiskPct: minRisk / equity * 100, rate: rate };
+  }
+  function renderCalc(host, rate) {
+    var f = { equity: "100", risk: "1", stop: "20", pair: "EURUSD", price: String(PAIR_INFO.EURUSD[2]) };
+    var out = h("div", { class: "out", "aria-live": "polite" });
+    function field(label, key, attrs) {
+      var el = h("input", Object.assign({ "aria-label": label, value: f[key], inputmode: "decimal" }, attrs || {}));
+      el.addEventListener("input", function () { f[key] = el.value; draw(); });
+      return h("label", null, label, el);
+    }
+    var sel = h("select", { "aria-label": "Pair" });
+    Object.keys(PAIR_INFO).forEach(function (p) { sel.appendChild(h("option", { value: p, text: p })); });
+    var priceEl = field("Price now", "price");
+    sel.addEventListener("change", function () { f.pair = sel.value; f.price = String(PAIR_INFO[sel.value][2]); priceEl.querySelector("input").value = f.price; draw(); });
+    function draw() {
+      clear(out);
+      var eq = parseFloat(f.equity), rk = parseFloat(f.risk), st = parseFloat(f.stop), pr = parseFloat(f.price);
+      if (!(eq > 0 && rk > 0 && st > 0 && pr > 0)) { out.appendChild(h("div", { class: "l", text: "Fill in every box with a number above zero." })); return; }
+      var r = sizeResult(eq, rk, st, f.pair, pr, rate);
+      function line(l, v) { out.appendChild(h("div", { class: "l", text: l })); out.appendChild(h("div", { text: v })); }
+      line("You risk", "USD " + money(r.riskUsd) + ugxText(r.riskUsd, rate));
+      if (r.units >= MICRO_LOT) {
+        line("Position size", Math.round(r.units).toLocaleString("en-US") + " units (" + r.lots.toFixed(2) + " lot)");
+      } else {
+        line("Position size", "Too small to trade");
+        out.appendChild(h("div", { class: "note", style: "font-family:var(--font-sans)", text: "The smallest lot (0.01) with this stop already risks USD " + money(r.minRiskUsd) + ", which is " + r.minRiskPct.toFixed(1) + "% of your balance. Raise the balance, accept that risk on purpose, or use a tighter stop." }));
+      }
+    }
+    host.appendChild(h("div", { class: "calc" },
+      h("div", { class: "row2" }, field("Balance (USD)", "equity"), field("Risk (%)", "risk")),
+      h("div", { class: "row2" }, field("Stop (pips)", "stop"), h("label", null, "Pair", sel)),
+      priceEl, out));
+    draw();
+  }
+  function defs(items) {
+    var card = h("div", { class: "card" });
+    items.forEach(function (d) { card.appendChild(h("div", { class: "def" }, h("b", { text: d[0] }), h("span", { text: d[1] }))); });
+    return card;
+  }
+  function renderLearn() {
+    var el = $("learn");
+    if (el.firstChild) return;
+    var rate = ctl && ctl.ugx ? ctl.ugx.rate : null;
+    el.appendChild(h("section", null, h("h2", { class: "sec", text: "What Kestrel looks for" }),
+      h("p", { class: "muted", style: "margin-bottom:12px", text: "Kestrel reads closed candles only, so everything it shows was knowable at that moment." }),
+      defs([
+        ["Swing", "A high or low that stands above or below the five candles on each side. It is only known five candles later."],
+        ["Break of structure", "A candle closes beyond the latest swing in the direction of the trend. The trend is continuing."],
+        ["Change of character", "A candle closes beyond the latest swing against the trend. The first sign it may be turning."],
+        ["Fair value gap", "Three candles where the first one's high and the third one's low leave a gap that price skipped over."],
+        ["Order block", "The last candle of the opposite colour before the move that broke structure."],
+        ["Liquidity sweep", "A wick that pokes past a recent swing but closes back inside it."]])));
+    el.appendChild(h("section", null, h("h2", { class: "sec", text: "How to read a backtest" }), defs([
+      ["Expectancy (R)", "The average result per trade, in multiples of what you risked. Below zero means it lost money after costs."],
+      ["95% interval", "The range the true average probably sits in. If it includes zero, the data shows no edge."],
+      ["Random entries", "The same stops and costs with the direction picked at random. A strategy that cannot beat this adds nothing."],
+      ["Max drawdown", "The worst fall from a peak. Expect a worse one in future."],
+      ["How many trades", "A small edge needs a few hundred trades before it shows. A hundred lucky trades prove little."]])));
+    var calc = h("div", { class: "card" });
+    renderCalc(calc, rate);
+    el.appendChild(h("section", null, h("h2", { class: "sec", text: "Size a trade" }), calc));
+    el.appendChild(h("section", null, h("h2", { class: "sec", text: "Before you use real money" }), defs([
+      ["1. Forward test first", "Let the paper account run for weeks. Check the journal seal so the record cannot be edited later."],
+      ["2. Count the costs", "Spread, slippage and overnight swap are in the backtest. Your broker's real ones may be higher."],
+      ["3. Risk a small share", "One loss should not end the account. Use the calculator before you size anything."],
+      ["4. Look the broker up", "Find it on its own regulator's website, not through a link someone sent you."]])));
+    el.appendChild(h("section", null, h("h2", { class: "sec", text: "Red flags" }), defs([
+      ["Guaranteed or fixed returns", "Trading cannot promise a return. Fixed-return forex schemes have taken money from Ugandans."],
+      ["A signal seller or account manager", "Anyone who names the broker you must deposit with, or asks to trade your account."],
+      ["Withdrawals that need another deposit", "A common step before the money disappears."],
+      ["Pressure to recruit", "Earning from the people you bring in is a pyramid, not trading."]])));
+    el.appendChild(h("p", { class: "note", text: "Retail online forex has no dedicated licensing regime in Uganda that we could confirm, and most Ugandan traders use foreign brokers, so the broker's home regulator matters. The Capital Markets Authority has warned the public about unlicensed dealers and fraud. Industry estimates say 70 to 80 percent of retail traders lose money. Kestrel places no real orders and is linked to no broker. None of this is financial advice." }));
+  }
+
+  // ---------- keep running ----------
+  function bridgeOk() {
+    try { return !!bridge.notificationsEnabled() && !!bridge.batteryExempt() && localStorage.getItem(STEP3_KEY) === "1"; } catch (e) { return false; }
+  }
+  var keepSig = "";
+  function keepState() {
+    var notif = false, batt = false;
+    try { notif = !!bridge.notificationsEnabled(); batt = !!bridge.batteryExempt(); } catch (e) { /* no bridge */ }
+    return [notif, batt, localStorage.getItem(STEP3_KEY) === "1"];
+  }
+  function renderKeep() {
+    var el = $("keep"), act = $("keepActions");
+    keepSig = keepState().join();
+    clear(el); clear(act);
+    var notif = false, batt = false;
+    try { notif = !!bridge.notificationsEnabled(); batt = !!bridge.batteryExempt(); } catch (e) { /* no bridge */ }
+    var step3 = localStorage.getItem(STEP3_KEY) === "1";
+    function st(done) { return !bridge ? badge("neutral", "Phone only") : done ? badge("neutral", "Done", "check") : badge("paused", "To do"); }
+    function item(n, title, text, done) {
+      return h("div", { class: "step" }, h("span", { class: "n", text: String(n) }), h("div", null, h("b", { text: title }), h("small", { text: text })), st(done));
+    }
+    el.appendChild(h("div", { class: "hero", style: "padding-top:32px" },
+      h("svg", { class: "mark", viewBox: "0 0 64 64", style: "width:56px;height:56px", "aria-hidden": "true" }),
+      h("h1", { text: "Keep Kestrel running" }),
+      h("p", { class: "muted", text: "Android stops background apps to save battery. Kestrel checks for a new candle every few minutes, so it needs these settings to keep going with the screen off." })));
+    var mark = el.querySelector("svg");
+    mark.innerHTML = '<path class="wing" d="M5 28 L21 15 L32 27 L43 15 L59 28"/><circle class="dot" cx="32" cy="44" r="6"/>';
+    el.appendChild(h("div", { class: "card run" },
+      item(1, "Notifications", "Shows the “Kestrel is running” notice that keeps the app alive.", notif),
+      item(2, "Allow background use", "Exempts Kestrel from Android’s battery optimisation.", batt),
+      item(3, "Never sleeping apps", "On Samsung, add Kestrel under Battery, Background usage limits, so it is not put to sleep.", step3)));
+    var later = h("button", { class: "k-btn k-btn--ghost", onclick: function () { localStorage.setItem(SEEN_KEY, "1"); location.hash = "#/control"; } }, bridge ? "Later" : "Back");
+    if (!bridge) {
+      act.appendChild(h("div", { class: "btnrow" },
+        h("p", { class: "note", style: "margin:0;text-align:center", text: "These settings live on the phone. Open Kestrel there to change them." }), later));
+      return;
+    }
+    var next = !batt ? function () { bridge.requestBatteryExemption(); } : function () { bridge.openAppSettings(); };
+    act.appendChild(h("div", { class: "btnrow" },
+      h("button", { class: "k-btn k-btn--primary", onclick: next }, "Open battery settings"),
+      step3 ? null : h("button", { class: "k-btn k-btn--secondary", onclick: function () { localStorage.setItem(STEP3_KEY, "1"); renderKeep(); } }, "I added Kestrel to Never sleeping apps"),
+      later,
+      h("p", { class: "note", style: "margin:0;text-align:center", text: "You can change these any time under Control." })));
+  }
+
+  // ---------- router ----------
+  var ROUTES = { "#/chat": "chat", "#/overview": "overview", "#/learn": "learn", "#/control": "control", "#/keep-running": "keep" };
+  var TABS = [["#/chat", "Chat", "chat"], ["#/overview", "Overview", "grid"], ["#/learn", "Learn", "book"], ["#/control", "Control", "sliders"]];
+  function buildTabs() {
+    var nav = $("tabs");
+    TABS.forEach(function (t) { nav.appendChild(h("a", { href: t[0], "data-route": t[0] }, icon(t[2]), t[1])); });
+  }
+  var current = "";
+  function route() {
+    var hash = ROUTES[location.hash] ? location.hash : "#/chat";
+    if (bridge && !localStorage.getItem(SEEN_KEY) && !location.hash) { hash = "#/keep-running"; }
+    var name = ROUTES[hash];
+    current = name;
+    Object.keys(ROUTES).forEach(function (k) { $("v-" + ROUTES[k]).hidden = ROUTES[k] !== name; });
+    var keep = name === "keep";
+    $("bar").hidden = keep; $("tabs").hidden = keep;
+    renderUpdateBar();
+    $("title").textContent = name === "control" ? "Control" : "Kestrel";
+    document.title = name === "control" ? "Kestrel control" : "Kestrel";
+    Array.prototype.forEach.call($("tabs").children, function (a) {
+      if (a.getAttribute("data-route") === hash) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+    });
+    if (name === "overview") refreshOverview();
+    if (name === "control") refreshControl();
+    if (name === "learn") refreshControl().then(renderLearn);
+    if (name === "keep") renderKeep();
+    if (name === "chat") $("log").scrollTop = $("log").scrollHeight;
+  }
+
+  function refreshOverview() {
+    return api("/api/overview").then(function (ov) { setHeader(ov); if (current === "overview") renderOverview(ov); }).catch(function (e) {
+      if (current === "overview") { var el = $("overview"); clear(el); el.appendChild(h("p", { class: "muted", text: "Could not load the overview: " + e.message })); }
+    });
+  }
+  function refreshControl() {
+    return api("/api/control").then(function (j) { ctl = j; if (current === "control") renderControl(); }).catch(function (e) {
+      if (current === "control") { var el = $("control"); clear(el); el.appendChild(h("p", { class: "muted", text: "Could not load the controls: " + e.message })); }
+    });
+  }
+
+  buildTabs();
+  buildChat();
+  window.addEventListener("hashchange", route);
+  document.addEventListener("visibilitychange", function () { if (!document.hidden) { if (current === "keep") renderKeep(); if (current === "control") renderControl(); refreshOverview(); } });
+  route();
+  refreshOverview();
+  refreshUpdate();
+  setInterval(function () { if (upd && upd.phase === "downloading") refreshUpdate(); }, 1000);
+  setInterval(function () { if (bridge && current === "keep" && keepState().join() !== keepSig) renderKeep(); }, KEEP_POLL_MS);
+  setInterval(function () { if (!document.hidden) { refreshUpdate(); refreshOverview(); if (current === "control") refreshControl(); } }, REFRESH_MS);
+})();
+</script>
+</body>
+</html>

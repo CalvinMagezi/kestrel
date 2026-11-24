@@ -1,0 +1,59 @@
+/* Kestrel — generated from tokens.json */
+:root, [data-theme="dark"] {
+  --surface: #111215;
+  --surface-raised: #181a1e;
+  --surface-sunken: #0b0c0e;
+  --border: #2b2e35;
+  --border-strong: #6a6f7b;
+  --ink: #f2f0eb;
+  --ink-muted: #a9adb7;
+  --accent: #f5a524;
+  --on-accent: #17181c;
+  --accent-ink: #f5a524;
+  --accent-edge: var(--accent);
+  --focus-ring: var(--accent-ink);
+  --shadow-sheet: 0 8px 24px rgba(0,0,0,0.5);
+}
+[data-theme="light"] {
+  --surface: #f6f5f1;
+  --surface-raised: #ffffff;
+  --surface-sunken: #ece9e4;
+  --border: #d9d6cd;
+  --border-strong: #85817a;
+  --ink: #17181c;
+  --ink-muted: #575a61;
+  --accent: #f5a524;
+  --on-accent: #17181c;
+  --accent-ink: #8f5200;
+  --accent-edge: var(--accent-ink);
+  --focus-ring: var(--accent-ink);
+  --shadow-sheet: 0 8px 24px rgba(23,24,28,0.18);
+}
+:root {
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+  --touch-target: 48px;
+  --chip-height: 36px;
+  --icon: 20px;
+  --font-sans: system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Roboto Mono", Menlo, Consolas, monospace;
+}
+.display { font-family: var(--font-sans); font-size: 32px; line-height: 36px; font-weight: 600; letter-spacing: -0.02em; }
+.title { font-family: var(--font-sans); font-size: 20px; line-height: 26px; font-weight: 600; letter-spacing: -0.01em; }
+.body { font-family: var(--font-sans); font-size: 15px; line-height: 22px; font-weight: 400; }
+.body-strong { font-family: var(--font-sans); font-size: 15px; line-height: 22px; font-weight: 600; }
+.caption { font-family: var(--font-sans); font-size: 12px; line-height: 16px; font-weight: 500; letter-spacing: 0.01em; }
+.label { font-family: var(--font-sans); font-size: 11px; line-height: 14px; font-weight: 600; letter-spacing: 0.08em; }
+.num-lg { font-family: var(--font-mono); font-size: 28px; line-height: 32px; font-weight: 600; }
+.num { font-family: var(--font-mono); font-size: 15px; line-height: 22px; font-weight: 500; }
+.num-sm { font-family: var(--font-mono); font-size: 12px; line-height: 16px; font-weight: 500; }

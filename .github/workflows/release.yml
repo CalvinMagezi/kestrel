@@ -1,0 +1,109 @@
+name: release
+# Push a tag such as v0.1.0 to build, sign and publish a release. See docs/RELEASING.md.
+on:
+  push:
+    tags: ['v*.*.*']
+permissions:
+  contents: read
+jobs:
+  verify:
+    name: Tag, version and changelog agree
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - id: v
+        run: |
+          v=$(sed -nE '/^\[workspace\.package\]/,/^\[/ s/^version = "([0-9]+\.[0-9]+\.[0-9]+)"/\1/p' Cargo.toml | head -1)
+          [ "${GITHUB_REF_NAME}" = "v$v" ] || { echo "tag ${GITHUB_REF_NAME} does not match Cargo.toml version $v"; exit 1; }
+          grep -q "^## $v" CHANGELOG.md || { echo "CHANGELOG.md has no section for $v"; exit 1; }
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+  build:
+    name: Build and sign the Android app
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install stable --profile minimal --component rustfmt,clippy --target aarch64-linux-android
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+      - name: Gates
+        run: |
+          cargo fmt --all --check
+          cargo clippy --workspace --all-targets -- -D warnings
+          cargo test --workspace
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - id: ndk
+        uses: nttld/setup-ndk@ed92fe6cadad69be94a966a7ee3271275e62f779 # v1
+        with:
+          ndk-version: r28c
+      - name: Android SDK pieces
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >/dev/null || true; "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-36" "build-tools;36.0.0" >/dev/null
+      - name: Build the daemon for Android
+        env:
+          NDK: ${{ steps.ndk.outputs.ndk-path }}
+        run: |
+          tc="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          export ANDROID_NDK_HOME="$NDK" PATH="$tc:$PATH"
+          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$tc/aarch64-linux-android28-clang"
+          export CC_aarch64_linux_android="$tc/aarch64-linux-android28-clang" AR_aarch64_linux_android="$tc/llvm-ar"
+          cargo build --release --target aarch64-linux-android -p fx-harness
+      - name: Build and sign the app
+        env:
+          KESTREL_KEYSTORE_B64: ${{ secrets.KESTREL_KEYSTORE_B64 }}
+          KESTREL_KEYSTORE_PASSWORD: ${{ secrets.KESTREL_KEYSTORE_PASSWORD }}
+          KESTREL_KEY_ALIAS: ${{ secrets.KESTREL_KEY_ALIAS }}
+          KESTREL_KEY_PASSWORD: ${{ secrets.KESTREL_KEY_PASSWORD }}
+        run: |
+          [ -n "$KESTREL_KEYSTORE_B64" ] || { echo "signing secrets are not set"; exit 1; }
+          echo "$KESTREL_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/kestrel.jks"
+          export KESTREL_KEYSTORE_FILE="$RUNNER_TEMP/kestrel.jks"
+          cd android
+          ./gradlew :app:assembleRelease -Pfx.bin="$GITHUB_WORKSPACE/target/aarch64-linux-android/release/fxh" --no-daemon
+          rm -f "$RUNNER_TEMP/kestrel.jks"
+      - name: Verify the signature and name the files
+        run: |
+          apk=android/app/build/outputs/apk/release/app-release.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$apk" | tee cert.txt
+          mkdir -p dist
+          cp "$apk" dist/Kestrel-android.apk
+          (cd dist && sha256sum Kestrel-android.apk > SHA256SUMS && cat SHA256SUMS)
+          grep -m1 'SHA-256 digest' cert.txt | sed 's/.*: //' > dist/cert-sha256.txt
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-files
+          path: dist/
+          if-no-files-found: error
+  publish:
+    name: Publish the release
+    needs: [verify, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: release-files
+          path: dist
+      - name: Release notes from the changelog
+        env:
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: |
+          awk -v v="## $VERSION" '$0 ~ "^"v {on=1; next} /^## / {on=0} on' CHANGELOG.md > notes.md
+          { echo; echo "Signing certificate SHA-256: $(cat dist/cert-sha256.txt)"; echo; echo "Verify the download: `sha256sum -c SHA256SUMS`"; } >> notes.md
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.verify.outputs.version }}
+        run: gh release create "$GITHUB_REF_NAME" dist/Kestrel-android.apk dist/SHA256SUMS --repo "$GITHUB_REPOSITORY" --title "Kestrel $VERSION" --notes-file notes.md --verify-tag

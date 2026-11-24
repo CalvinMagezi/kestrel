@@ -1,0 +1,15 @@
+[package]
+name = "fx-feed"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+fx-core = { path = "../fx-core" }
+anyhow = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+reqwest = { version = "0.12", features = ["json", "gzip"] }
+rusqlite = { version = "0.41", features = ["bundled"] }
+sha2 = "0.10"

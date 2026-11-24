@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Pre-commit hook. Install once per clone: ./scripts/install-hooks.sh
+#   1. rustfmt the staged Rust files and re-stage them.
+#   2. Refuse keystores, env files and other files that must never be committed.
+#   3. Refuse secret shapes and personal data in the added lines.
+#   4. Run gitleaks over the staged changes when it is installed.
+# Personal identifiers (names, emails, hosts, device ids) live in a denylist outside the repository:
+# one extended regex per line in $KESTREL_DENYLIST or ~/.config/kestrel/denylist.
+set -euo pipefail
+RED='\033[0;31m'; YELLOW='\033[0;33m'; NC='\033[0m'
+
+if [ "${KESTREL_SKIP_FMT:-0}" != "1" ] && command -v rustfmt >/dev/null 2>&1; then
+    files=()
+    while IFS= read -r f; do files+=("$f"); done < <(git diff --cached --name-only --diff-filter=ACMR -- '*.rs')
+    for f in "${files[@]+"${files[@]}"}"; do
+        staged=$(git show ":$f")
+        formatted=$(printf '%s\n' "$staged" | rustfmt --edition 2024 --emit stdout 2>/dev/null) || continue
+        [ "$formatted" = "$staged" ] && continue
+        if git diff --quiet -- "$f"; then
+            printf '%s\n' "$formatted" > "$f"; git add -- "$f"; echo "rustfmt: formatted $f"
+        else
+            echo -e "${RED}$f is partly staged and not formatted. Run cargo fmt --all, stage it, commit again.${NC}"; exit 1
+        fi
+    done
+fi
+
+bad=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '\.(jks|keystore|p12|pfx|pem|key)$|(^|/)\.env($|\.)|(^|/)local\.properties$' | grep -v '\.example$' || true)
+if [ -n "$bad" ]; then
+    echo -e "${RED}These files must never be committed:${NC}"; echo "$bad" | sed 's/^/    /'; exit 1
+fi
+
+PATTERNS=(
+    'sk-[a-zA-Z0-9_-]{20,}'
+    'AKIA[0-9A-Z]{16}'
+    'gh[pousr]_[a-zA-Z0-9]{30,}'
+    'github_pat_[a-zA-Z0-9_]{30,}'
+    'xox[bpoa]-[0-9]+'
+    'AIza[0-9A-Za-z_-]{35}'
+    '-----BEGIN [A-Z ]*PRIVATE KEY-----'
+    'KESTREL_(KEYSTORE|KEY)_PASSWORD[[:space:]]*[=:][[:space:]]*[^[:space:]$]'
+    '/Users/[A-Za-z]'
+    '/home/[A-Za-z]'
+)
+DENYLIST="${KESTREL_DENYLIST:-$HOME/.config/kestrel/denylist}"
+if [ -s "$DENYLIST" ]; then
+    while IFS= read -r line; do
+        case "$line" in ''|'#'*) ;; *) PATTERNS+=("$line") ;; esac
+    done < "$DENYLIST"
+fi
+added=$(git diff --cached --diff-filter=ACMR -U0 -- . ':!Cargo.lock' ':!*.png' ':!*.jpg' ':!*.webp' ':!scripts/personal-data-baseline.txt' ':!.gitleaks.toml' ':!scripts/pre-commit' | grep -E '^\+' | grep -vE '^\+\+\+' || true)
+found=0
+for p in "${PATTERNS[@]}"; do
+    # Placeholders such as /Users/<name> or /home/runner are fine; only real-looking matches count.
+    hits=$(printf '%s\n' "$added" | grep -E -- "$p" | grep -vE '/(Users|home)/(<|\$|\{|user|username|you|example|runner|ubuntu|Shared|Public)' || true)
+    if [ -n "$hits" ]; then
+        [ "$found" -eq 0 ] && echo -e "${RED}Secret or personal data in the staged changes (pattern shown, text hidden):${NC}"
+        found=1; echo "    pattern: $p"
+    fi
+done
+if [ "$found" -ne 0 ]; then
+    echo "Commit blocked. Use environment variables or .example files for machine-specific values."
+    echo "Emergency bypass: git commit --no-verify (CI will still scan)."
+    exit 1
+fi
+
+if command -v gitleaks >/dev/null 2>&1; then
+    gitleaks protect --staged --config .gitleaks.toml --redact --no-banner >/dev/null 2>&1 || {
+        echo -e "${RED}gitleaks found a secret in the staged changes. Run: gitleaks protect --staged --config .gitleaks.toml --redact -v${NC}"; exit 1; }
+else
+    echo -e "${YELLOW}gitleaks not installed: skipped (brew install gitleaks). CI scans anyway.${NC}"
+fi
+exit 0

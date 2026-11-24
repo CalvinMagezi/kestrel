@@ -1,0 +1,19 @@
+# Used by the secrets job in .github/workflows/ci.yml and by scripts/pre-commit.
+title = "kestrel gitleaks config"
+
+[extend]
+useDefault = true
+
+# Model-provider keys come in several shapes (sk-ant-api03-..., sk-ant-usr-..., and others), so
+# match the family rather than one prefix.
+[[rules]]
+id = "anthropic-any-key"
+description = "Anthropic API key of any shape"
+regex = '''\bsk-ant-[a-z0-9]+-[A-Za-z0-9_-]{30,}'''
+keywords = ["sk-ant-"]
+
+[[rules]]
+id = "kestrel-signing-secret"
+description = "Release keystore password or key in the open"
+regex = '''(?i)KESTREL_(KEYSTORE|KEY)_PASSWORD\s*[=:]\s*['"]?[^\s'"$][^\s'"]{5,}'''
+keywords = ["kestrel_key"]

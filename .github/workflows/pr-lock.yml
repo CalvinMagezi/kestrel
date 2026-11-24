@@ -1,0 +1,25 @@
+name: pr-lock
+# This project does not take outside pull requests. Anything from someone who is not the owner or
+# a collaborator is closed at once with an explanation. The workflow reads only event data and
+# never checks out the pull request's code, so it is safe to run on pull_request_target.
+on:
+  pull_request_target:
+    types: [opened, reopened]
+permissions:
+  pull-requests: write
+  issues: write
+jobs:
+  lock:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const allowed = ['OWNER', 'MEMBER', 'COLLABORATOR'];
+            if (allowed.includes(pr.author_association) || pr.user.login === 'dependabot[bot]') return;
+            await github.rest.issues.createComment({
+              ...context.repo, issue_number: pr.number,
+              body: 'Thanks for the interest. This project does not accept outside pull requests, so this one has been closed automatically. Please open an issue to describe a problem or an idea.'
+            });
+            await github.rest.pulls.update({ ...context.repo, pull_number: pr.number, state: 'closed' });

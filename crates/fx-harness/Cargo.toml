@@ -1,0 +1,27 @@
+[package]
+name = "fx-harness"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "fxh"
+path = "src/main.rs"
+
+[dependencies]
+fx-core = { path = "../fx-core" }
+fx-feed = { path = "../fx-feed" }
+anyhow = { workspace = true }
+sha2 = "0.10"
+serde = { workspace = true }
+serde_json = { workspace = true }
+axum = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "sync", "net"] }
+reqwest = { version = "0.12", features = ["json", "gzip"] }
+# HQ's keyless web search and page reader, pinned to a commit so builds are reproducible.
+hq-tools-web = { git = "https://github.com/CalvinMagezi/hq", rev = "c25a3e114a6517bb8ab6659926d9a8540f78a692" }
+
+# HQ builds OpenSSL from source for Android, which has none to link; same here.
+[target.'cfg(any(target_os = "linux", target_os = "android"))'.dependencies]
+openssl-sys = { version = "*", features = ["vendored"] }
